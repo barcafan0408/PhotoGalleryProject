@@ -2,16 +2,15 @@
 
 import React, { Component, } from 'react';
 import {
-  AppRegistry,
   StyleSheet,
   Text,
   View,
-  ListView,
   Image,
   TouchableOpacity,
-  Dimensions
 } from 'react-native';
+import { connect } from 'react-redux';
 import PhotoGrid from './PhotoGrid';
+import store from './store';
 
 var CONSUMER_KEY = 'wB4ozJxTijCwNuggJvPGtBGCRqaZVcF6jsrzUadF';
 var API_URL = 'https://api.500px.com/v1/photos';
@@ -25,18 +24,13 @@ var resultsCache = {
   data: []
 };
 
-export default class GridScreen extends Component {
+class GridScreen extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      ds: new ListView.DataSource({
-        rowHasChanged: (row1, row2) => row1 !== row2,
-      }),
       isLoading: false,
-      isLoadingTail: false,
-      currentPage: 0,
-      maxPage: 1,
-      //currentPhoto: {},
+      currentPage: 1,
+      maxPage: 0,
     };       
   }  
   
@@ -53,7 +47,6 @@ export default class GridScreen extends Component {
   fetchData(){
     this.setState({
       isLoading: true,
-      currentPage: this.state.currentPage + 1,
     });
     fetch(this.urlForPage())    
       .then((response) => response.json())
@@ -69,9 +62,13 @@ export default class GridScreen extends Component {
           resultsCache.data.push(photos[i]);          
         }
         this.setState({
-          ds: this.state.ds.cloneWithRows(resultsCache.data),
           isLoading: false,
-          maxPage: responseData.total_pages,          
+          maxPage: responseData.total_pages,    
+          currentPage: this.state.currentPage + 1,      
+        });
+        store.dispatch({
+          type: 'LOAD_PHOTOS_SUCCESS',          
+          photos: resultsCache.data
         });
       })
       .done();      
@@ -81,17 +78,10 @@ export default class GridScreen extends Component {
     if (this.state.currentPage === this.state.maxPage) {
       return;
     }
-    this.setState({
-      currentPage: this.state.currentPage + 1,
-      isLoadingTail: true,
-    });
     fetch(this.urlForPage())
       .then((response) => response.json())
       .catch((error) => {
         console.error(error);
-        this.setState({
-          isLoadingTail: false,
-        });
       })
       .then((responseData) => {
         var photos = responseData.photos.slice();
@@ -99,8 +89,7 @@ export default class GridScreen extends Component {
           resultsCache.data.push(photos[i]);
         }
         this.setState({
-          ds: this.state.ds.cloneWithRows(resultsCache.data),
-          isLoadingTail: false,
+          currentPage: this.state.currentPage + 1,
         });
       })
       .done();
@@ -120,7 +109,7 @@ export default class GridScreen extends Component {
     }
     return(
       <PhotoGrid
-        data = { resultsCache.data }
+        data = { this.props.photos }
         itemsPerRow = { 4 }
         itemMargin = { 1 }
         renderItem = { this.renderItem.bind(this) }
@@ -141,7 +130,7 @@ export default class GridScreen extends Component {
  
   renderItem(item, itemSize) {
     return(      
-        <TouchableOpacity
+      <TouchableOpacity
         key = { item.id }
         style = {{ width: itemSize, height: itemSize }}
         onPress = { () => 
@@ -167,3 +156,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5FCFF',
   },  
 });
+
+const mapStateToProps = function(store) {
+  return {
+    photos: store.photos
+  };
+}
+
+export default connect(mapStateToProps)(GridScreen);
