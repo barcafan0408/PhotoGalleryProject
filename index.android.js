@@ -21,8 +21,8 @@ import {
   Navigator
 } from 'react-native-deprecated-custom-components';
 
-var GridScreen = require('./GridScreen');
 import PhotoScreen from './PhotoScreen';
+import GridScreen from './GridScreen';
 
 var _navigator;
 
@@ -47,7 +47,7 @@ var RouteMapper = function(route, navigationOperations, onComponentRef) {
           style={{flex: 1}}
           navigator={navigationOperations}
           photo={route.photo}
-        />
+        />        
       </View>
     );
   }  

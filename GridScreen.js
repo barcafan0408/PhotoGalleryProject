@@ -1,72 +1,61 @@
 'use strict';
 
-import React, {Component} from 'react';
+import React, { Component, } from 'react';
 import {
-  ListView,
-  Platform,
-  ProgressBarAndroid,
+  AppRegistry,
   StyleSheet,
   Text,
   View,
+  ListView,
   Image,
-  Dimensions,
-  TouchableHighlight
+  TouchableOpacity,
+  Dimensions
 } from 'react-native';
+import PhotoGrid from './PhotoGrid';
 
 var CONSUMER_KEY = 'wB4ozJxTijCwNuggJvPGtBGCRqaZVcF6jsrzUadF';
 var API_URL = 'https://api.500px.com/v1/photos';
-var PAGE_SIZE = 26;
+var PAGE_SIZE = 40;
 var FEATURE = 'popular';
 var PARAMS = '?feature=' + FEATURE + '&consumer_key=' + CONSUMER_KEY + '&rpp=' + PAGE_SIZE;
 PARAMS += '&image_size=3';
 var REQUEST_URL = API_URL + PARAMS;
 
-var device_width = Dimensions.get('window').width;
-var device_height = Dimensions.get('window').height;
 var resultsCache = {
   data: []
 };
 
-var GridScreen = React.createClass({
-  getInitialState: function() {
-    return {
-      dataSource: new ListView.DataSource({
+export default class GridScreen extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      ds: new ListView.DataSource({
         rowHasChanged: (row1, row2) => row1 !== row2,
       }),
       isLoading: false,
       isLoadingTail: false,
-      currentScreenWidth: device_width,
-      currentScreenHeight: device_height,
-      viewHeight: 200,
       currentPage: 0,
-      maxPage: 1
-    };
-  },
-
-  handleRotation: function(event) {
-    var layout = event.nativeEvent.layout;
-    this.setState({
-      currentScreenWidth: layout.width,
-      currentScreenHeight: layout.height,
-    });
-  },
-
-  componentDidMount: function() {
-    this.fetchData();
-  },
-
-  _urlForPage: function() {
+      maxPage: 1,
+      //currentPhoto: {},
+    };       
+  }  
+  
+  componentDidMount() {
+    this.fetchData();    
+  }
+  
+  urlForPage() {
     return (
       REQUEST_URL + '&page=' + this.state.currentPage
     );
-  },
-
-  fetchData: function() {
+  }
+  
+  fetchData(){
     this.setState({
       isLoading: true,
       currentPage: this.state.currentPage + 1,
     });
-    fetch(this._urlForPage())
+    fetch(this.urlForPage())    
       .then((response) => response.json())
       .catch((error) => {
         console.error(error);
@@ -77,28 +66,26 @@ var GridScreen = React.createClass({
       .then((responseData) => {
         var photos = responseData.photos.slice();
         for (var i in photos) {
-          resultsCache.data.push(photos[i]);
+          resultsCache.data.push(photos[i]);          
         }
         this.setState({
-          dataSource: this.state.dataSource.cloneWithRows(resultsCache.data),
+          ds: this.state.ds.cloneWithRows(resultsCache.data),
           isLoading: false,
-          maxPage: responseData.total_pages,
+          maxPage: responseData.total_pages,          
         });
       })
-      .done();
-  },
-
-  onEndReached: function() {
+      .done();      
+  }
+  
+  onEndReached() {
     if (this.state.currentPage === this.state.maxPage) {
       return;
     }
-
     this.setState({
       currentPage: this.state.currentPage + 1,
       isLoadingTail: true,
     });
-
-    fetch(this._urlForPage())
+    fetch(this.urlForPage())
       .then((response) => response.json())
       .catch((error) => {
         console.error(error);
@@ -112,34 +99,37 @@ var GridScreen = React.createClass({
           resultsCache.data.push(photos[i]);
         }
         this.setState({
-          dataSource: this.state.dataSource.cloneWithRows(resultsCache.data),
+          ds: this.state.ds.cloneWithRows(resultsCache.data),
           isLoadingTail: false,
         });
       })
       .done();
-  },
-
-  selectPhoto: function(photo) {
+  }
+  
+  selectPhoto(photo) {
     this.props.navigator.push({
       title: photo.name,
       name: 'photo',
       photo: photo,
     });
-  },
-
-  renderFooter: function() {
-    if (!this.state.isLoadingTail) {
-      return <View style={styles.scrollSpinner} />;
+  }
+  
+  render() {
+    if (this.state.isLoading) {
+      return this.renderLoadingView();
     }
-
-    return (
-      <View  style={{alignItems: 'center'}}>
-        <ProgressBarAndroid styleAttr="Large"/>
-      </View>
+    return(
+      <PhotoGrid
+        data = { resultsCache.data }
+        itemsPerRow = { 4 }
+        itemMargin = { 1 }
+        renderItem = { this.renderItem.bind(this) }
+        onEndReached={ this.onEndReached.bind(this) }
+      />      
     );
-  },
+  }
 
-  renderLoadingView: function() {
+  renderLoadingView() {
     return (
       <View style={styles.container}>
         <Text>
@@ -147,88 +137,33 @@ var GridScreen = React.createClass({
         </Text>
       </View>
     );
-  },
+  }
+ 
+  renderItem(item, itemSize) {
+    return(      
+        <TouchableOpacity
+        key = { item.id }
+        style = {{ width: itemSize, height: itemSize }}
+        onPress = { () => 
+          this.selectPhoto(item)        
+        }>
+        <Image
+          resizeMode = "cover"
+          style = {{ flex: 6 }}
+          source = {{ uri: item.image_url }}
+        />
+        <Text style={{flex: 1, fontSize : 10 }}> {item.name} </Text>
+        <Text style={{flex: 1, fontSize : 10 }}> by {item.user.username} </Text>
+      </TouchableOpacity>      
+    )
+  }
+}
 
-  renderPhoto: function(photo) {
-    return (
-      <TouchableHighlight onPress={() => this.selectPhoto(photo)}>
-        <View
-          style={[styles.container, this.calculateViewSize()]}
-        >          
-          <Text style={styles.text}> name: {"\n"} {photo.name} </Text>          
-          <Text style={styles.text}>creator: {photo.user.username}</Text>
-          <Image
-            source={{uri: photo.image_url}}
-            style={[styles.image, this.calculateImgSize(photo)]}
-          />          
-        </View>
-      </TouchableHighlight>
-    );
-  },
-
-  render: function() {
-    if (this.state.isLoading) {
-      return this.renderLoadingView();
-    }
-
-    return (
-      <ListView
-        onLayout={this.handleRotation}//TODO not work
-        dataSource={this.state.dataSource}
-        renderFooter={this.renderFooter}
-        renderRow={this.renderPhoto}
-        onEndReached={this.onEndReached}
-        style={styles.listView}
-        contentContainerStyle={styles.containerView}
-      />
-    );
-  },
-
-  calculateViewSize: function() {
-    return {
-      width: this.state.currentScreenWidth / 2 - 10,
-      height: this.state.viewHeight,
-    };
-  },
-
-  calculateImgSize: function(photo) {
-    var ratio = photo.width / photo.height;
-    var width = this.state.currentScreenWidth / 2;
-    var height = width * ratio;
-    if (height < this.state.viewHeight) {
-      height = this.state.viewHeight;
-      width = height / ratio;
-    }
-    return {width, height};
-  },
-});
-
-var styles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
-    marginBottom: 5,
-    marginRight: 5,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  text: {    
-    //lines: 1,    
-  },
-  image: {
-  },
-  containerView: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flex: 1,
     justifyContent: 'center',
-    paddingLeft: 5,
-    paddingRight: 5,
-    marginBottom: 5,
-    // paddingBottom: 5,
-  },
-  listView: {
-    paddingTop: 5,
-    paddingBottom: 20,
+    alignItems: 'center',
     backgroundColor: '#F5FCFF',
-  },
+  },  
 });
-
-module.exports = GridScreen;
