@@ -11,89 +11,13 @@ import {
 import { connect } from 'react-redux';
 import PhotoGrid from './PhotoGrid';
 import store from './store';
-
-var CONSUMER_KEY = 'wB4ozJxTijCwNuggJvPGtBGCRqaZVcF6jsrzUadF';
-var API_URL = 'https://api.500px.com/v1/photos';
-var PAGE_SIZE = 40;
-var FEATURE = 'popular';
-var PARAMS = '?feature=' + FEATURE + '&consumer_key=' + CONSUMER_KEY + '&rpp=' + PAGE_SIZE;
-PARAMS += '&image_size=3';
-var REQUEST_URL = API_URL + PARAMS;
-
-var resultsCache = {
-  data: []
-};
+import { fetchPhotos } from './actions'
 
 class GridScreen extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      isLoading: false,
-      currentPage: 1,
-      maxPage: 0,
-    };       
-  }  
-  
+   
   componentDidMount() {
-    this.fetchData();    
-  }
-  
-  urlForPage() {
-    return (
-      REQUEST_URL + '&page=' + this.state.currentPage
-    );
-  }
-  
-  fetchData(){
-    this.setState({
-      isLoading: true,
-    });
-    fetch(this.urlForPage())    
-      .then((response) => response.json())
-      .catch((error) => {
-        console.error(error);
-        this.setState({
-          isLoading: false,
-        });
-      })
-      .then((responseData) => {
-        var photos = responseData.photos.slice();
-        for (var i in photos) {
-          resultsCache.data.push(photos[i]);          
-        }
-        this.setState({
-          isLoading: false,
-          maxPage: responseData.total_pages,    
-          currentPage: this.state.currentPage + 1,      
-        });
-        store.dispatch({
-          type: 'LOAD_PHOTOS_SUCCESS',          
-          photos: resultsCache.data
-        });
-      })
-      .done();      
-  }
-  
-  onEndReached() {
-    if (this.state.currentPage === this.state.maxPage) {
-      return;
-    }
-    fetch(this.urlForPage())
-      .then((response) => response.json())
-      .catch((error) => {
-        console.error(error);
-      })
-      .then((responseData) => {
-        var photos = responseData.photos.slice();
-        for (var i in photos) {
-          resultsCache.data.push(photos[i]);
-        }
-        this.setState({
-          currentPage: this.state.currentPage + 1,
-        });
-      })
-      .done();
-  }
+    this.props.fetchData(this.props.currentPage);    
+  }    
   
   selectPhoto(photo) {
     this.props.navigator.push({
@@ -104,7 +28,7 @@ class GridScreen extends Component {
   }
   
   render() {
-    if (this.state.isLoading) {
+    if (this.props.photos.length===0) {
       return this.renderLoadingView();
     }
     return(
@@ -113,7 +37,7 @@ class GridScreen extends Component {
         itemsPerRow = { 4 }
         itemMargin = { 1 }
         renderItem = { this.renderItem.bind(this) }
-        onEndReached={ this.onEndReached.bind(this) }
+        onEndReached={ this.props.onEndReached }
       />      
     );
   }
@@ -157,10 +81,26 @@ const styles = StyleSheet.create({
   },  
 });
 
-const mapStateToProps = function(store) {
+const mapStateToProps = (store) => {
   return {
+    currentPage: store.page,
+    maxPage: store.maxPage,
     photos: store.photos
   };
 }
 
-export default connect(mapStateToProps)(GridScreen);
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onEndReached: () => {
+      if (store.getState().page === store.getState().maxPage) {
+        return;
+      }
+      dispatch(fetchPhotos(store.getState().page))
+    },
+    fetchData: (page) => {
+      dispatch(fetchPhotos(page))
+    }    
+  }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(GridScreen);
