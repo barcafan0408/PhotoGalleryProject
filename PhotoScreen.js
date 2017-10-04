@@ -9,17 +9,21 @@ import {
   View,
   Dimensions
 } from 'react-native';
+import PropTypes from 'prop-types';
+
+import { connect } from 'react-redux';
+import store from './store';
 
 var device_width = Dimensions.get('window').width;
 var device_height = Dimensions.get('window').height;
 
-export default class PhotoScreen extends React.Component{
+class PhotoScreen extends React.Component{
   render() {
     return (
       <View style={styles.contentContainer}>
         <Image
-          source={getImageSource(this.props.photo)}
-          style={[styles.detailsImage, calculateImgSize(this.props.photo)]}
+          source={getImageSource(this.props.currentPhoto)}
+          style={[styles.detailsImage, calculateImgSize(this.props.currentPhoto)]}
         />
       </View>
     );
@@ -53,3 +57,15 @@ var styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
 });
+
+const mapStateToProps = function(store) {
+  return { 
+    currentPhoto: store.photoReducer.currentPhoto, 
+  };
+}
+
+PhotoScreen.navigationOptions = {
+  title: 'Photo',
+};
+
+export default connect(mapStateToProps)(PhotoScreen);

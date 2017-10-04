@@ -38,3 +38,10 @@ function urlForPage(currentPage) {
     REQUEST_URL + '&page=' + currentPage
   );
 }
+
+export function selectPhoto(currentPhoto) {
+  return {
+    type: 'SELECT_PHOTO',
+    currentPhoto
+  }
+}

@@ -8,24 +8,18 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
+import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
+
 import PhotoGrid from './PhotoGrid';
 import store from './store';
-import { fetchPhotos } from './actions'
+import { fetchPhotos, selectPhoto } from './actions'
 
 class GridScreen extends Component {
    
   componentDidMount() {
     this.props.fetchData(this.props.currentPage);    
-  }    
-  
-  selectPhoto(photo) {
-    this.props.navigator.push({
-      title: photo.name,
-      name: 'photo',
-      photo: photo,
-    });
-  }
+  }      
   
   render() {
     if (this.props.photos.length===0) {
@@ -58,7 +52,7 @@ class GridScreen extends Component {
         key = { item.id }
         style = {{ width: itemSize, height: itemSize }}
         onPress = { () => 
-          this.selectPhoto(item)        
+          this.props.selectPhotoDispatch(item)        
         }>
         <Image
           resizeMode = "cover"
@@ -83,24 +77,31 @@ const styles = StyleSheet.create({
 
 const mapStateToProps = (store) => {
   return {
-    currentPage: store.page,
-    maxPage: store.maxPage,
-    photos: store.photos
+    currentPage: store.photoReducer.page,
+    maxPage: store.photoReducer.maxPage,
+    photos: store.photoReducer.photos
   };
 }
 
 const mapDispatchToProps = (dispatch) => {
   return {
     onEndReached: () => {
-      if (store.getState().page === store.getState().maxPage) {
+      if (store.getState().photoReducer.page === store.getState().photoReducer.maxPage) {
         return;
       }
-      dispatch(fetchPhotos(store.getState().page))
+      dispatch(fetchPhotos(store.getState().photoReducer.page))
     },
     fetchData: (page) => {
       dispatch(fetchPhotos(page))
-    }    
+    },    
+    selectPhotoDispatch: (photo) => {
+        dispatch(selectPhoto(photo))
+    }
   }
 }
+
+GridScreen.navigationOptions = {
+  title: 'Grid of photos',
+};
 
 export default connect(mapStateToProps, mapDispatchToProps)(GridScreen);
